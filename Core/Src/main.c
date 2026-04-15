@@ -21,7 +21,7 @@
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
-
+#include "battery_driver.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -43,20 +43,28 @@
 CAN_HandleTypeDef hcan1;
 
 /* USER CODE BEGIN PV */
-
+I2C_HandleTypeDef hi2c2;
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
 void SystemClock_Config(void);
 static void MX_GPIO_Init(void);
 static void MX_CAN1_Init(void);
+static void MX_I2C2_Init(void);
 /* USER CODE BEGIN PFP */
 
 /* USER CODE END PFP */
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
-
+int _write(int file, char *ptr, int len)
+{
+    for (int i = 0; i < len; i++)
+    {
+        ITM_SendChar(*ptr++);
+    }
+    return len;
+}
 /* USER CODE END 0 */
 
 /**
@@ -83,26 +91,43 @@ int main(void)
   SystemClock_Config();
 
   /* USER CODE BEGIN SysInit */
-
+  CoreDebug->DEMCR |= CoreDebug_DEMCR_TRCENA_Msk;
+  ITM->LAR = 0xC5ACCE55;   // unlock ITM
+  ITM->TCR |= ITM_TCR_ITMENA_Msk;
+  ITM->TER |= 1;            // enable stimulus port 0
   /* USER CODE END SysInit */
 
   /* Initialize all configured peripherals */
   MX_GPIO_Init();
   MX_CAN1_Init();
+  MX_I2C2_Init();
   /* USER CODE BEGIN 2 */
-
+  /*HAL_GPIO_WritePin(GPIOE, GPIO_PIN_8, GPIO_PIN_SET);  // toggle a GPIO as proof of life
+  HAL_Delay(500);
+  HAL_GPIO_WritePin(GPIOE, GPIO_PIN_8, GPIO_PIN_RESET);*/
   /* USER CODE END 2 */
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
   while (1)
   {
-	  HAL_Delay(500);
-	  printf("Hello world\n");
+	  /*BQ_PrintStatus();
+	  HAL_Delay(1000);
+
+	  // Also watch for interrupt alerts on PE9
+	  if (HAL_GPIO_ReadPin(GPIOE, GPIO_PIN_9) == GPIO_PIN_RESET)
+	  {
+		  uint8_t f0, f1;
+	      BQ_ReadFaults(&f0, &f1);
+	      printf("ALERT! Fault0=0x%02X  Fault1=0x%02X\r\n", f0, f1);
+	  }*/
+	  //ITM_SendChar('A');   // bypass printf entirely
+	  printf("Hello world!!!\n");
+	  HAL_Delay(1000);
+  }
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
-  }
   /* USER CODE END 3 */
 }
 
@@ -319,7 +344,7 @@ static void MX_GPIO_Init(void)
   /*Configure GPIO pin : PE9 */
   GPIO_InitStruct.Pin = GPIO_PIN_9;
   GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
-  GPIO_InitStruct.Pull = GPIO_PULLDOWN;
+  GPIO_InitStruct.Pull = GPIO_PULLUP;
   HAL_GPIO_Init(GPIOE, &GPIO_InitStruct);
 
   /*Configure GPIO pin : PE7 */
@@ -334,6 +359,21 @@ static void MX_GPIO_Init(void)
 }
 
 /* USER CODE BEGIN 4 */
+static void MX_I2C2_Init(void)
+{
+  hi2c2.Instance = I2C2;
+  hi2c2.Init.Timing = 0x00201D2B; // Standard 400kHz timing for 16MHz clock
+  hi2c2.Init.OwnAddress1 = 0;
+  hi2c2.Init.AddressingMode = I2C_ADDRESSINGMODE_7BIT;
+  hi2c2.Init.DualAddressMode = I2C_DUALADDRESS_DISABLE;
+  hi2c2.Init.OwnAddress2 = 0;
+  hi2c2.Init.GeneralCallMode = I2C_GENERALCALL_DISABLE;
+  hi2c2.Init.NoStretchMode = I2C_NOSTRETCH_DISABLE;
+  if (HAL_I2C_Init(&hi2c2) != HAL_OK)
+  {
+    Error_Handler();
+  }
+}
 
 /* USER CODE END 4 */
 
