@@ -42,8 +42,9 @@
 /* Private variables ---------------------------------------------------------*/
 CAN_HandleTypeDef hcan1;
 
-/* USER CODE BEGIN PV */
 I2C_HandleTypeDef hi2c2;
+
+/* USER CODE BEGIN PV */
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -57,14 +58,6 @@ static void MX_I2C2_Init(void);
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
-int _write(int file, char *ptr, int len)
-{
-    for (int i = 0; i < len; i++)
-    {
-        ITM_SendChar(*ptr++);
-    }
-    return len;
-}
 /* USER CODE END 0 */
 
 /**
@@ -95,6 +88,9 @@ int main(void)
   ITM->LAR = 0xC5ACCE55;   // unlock ITM
   ITM->TCR |= ITM_TCR_ITMENA_Msk;
   ITM->TER |= 1;            // enable stimulus port 0
+  HAL_DBGMCU_EnableDBGSleepMode();
+  HAL_DBGMCU_EnableDBGStopMode();
+  HAL_DBGMCU_EnableDBGStandbyMode();
   /* USER CODE END SysInit */
 
   /* Initialize all configured peripherals */
@@ -102,29 +98,85 @@ int main(void)
   MX_CAN1_Init();
   MX_I2C2_Init();
   /* USER CODE BEGIN 2 */
-  /*HAL_GPIO_WritePin(GPIOE, GPIO_PIN_8, GPIO_PIN_SET);  // toggle a GPIO as proof of life
-  HAL_Delay(500);
-  HAL_GPIO_WritePin(GPIOE, GPIO_PIN_8, GPIO_PIN_RESET);*/
+  HAL_StatusTypeDef result = HAL_I2C_IsDeviceReady(&hi2c2, BQ25756E_I2C_ADDR, 3, 100);
+  if (result == HAL_OK)
+      printf("BQ25756E found!\r\n");
+  else
+      printf("BQ25756E NOT found - check wiring/address\r\n");
   /* USER CODE END 2 */
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
-  while (1)
-  {
-	  /*BQ_PrintStatus();
-	  HAL_Delay(1000);
+  /* Infinite loop */
+    while (1)
+    {
 
-	  // Also watch for interrupt alerts on PE9
-	  if (HAL_GPIO_ReadPin(GPIOE, GPIO_PIN_9) == GPIO_PIN_RESET)
-	  {
-		  uint8_t f0, f1;
-	      BQ_ReadFaults(&f0, &f1);
-	      printf("ALERT! Fault0=0x%02X  Fault1=0x%02X\r\n", f0, f1);
-	  }*/
-	  //ITM_SendChar('A');   // bypass printf entirely
-	  printf("Hello world!!!\n");
-	  HAL_Delay(1000);
-  }
+    	// READ BATTERY CHARGING STATUS
+    	/*uint8_t f0 = 0, f1 = 0;
+
+        // 1. Read Faults FIRST
+        BQ_ReadFaults(&f0, &f1);
+
+        // 2. Check for "Battery Absent" or "TS Open"
+        // 0x07 in Fault0 means the TS pin is floating (Battery likely unplugged)
+        if ((f0 & 0x07) == 0x07)
+        {
+            printf("IDLE: No Battery Detected (TS Open)\r\n");
+        }
+        else if (f0 != 0 || f1 != 0)
+        {
+            printf("ALERT! Faults present: F0=0x%02X F1=0x%02X\r\n", f0, f1);
+        }
+        else
+        {
+            // 3. Only print charging status if there are no major hardware blocks
+            BQ_PrintStatus();
+        }
+
+        // 4. WATCHDOG "PET" (Crucial for BQ series)
+        // Even if disabled in Init, it's good practice to reset the timer
+        // or rewrite the enable bit to keep the charger alive.
+        // BQ_WriteReg(BQ_REG_CHARGE_CTRL, BQ_CHARGE_ENABLE_BIT);
+
+        HAL_Delay(1000);
+
+        // 5. Physical Interrupt Check (PE9)
+        if (HAL_GPIO_ReadPin(GPIOE, GPIO_PIN_9) == GPIO_PIN_RESET)
+        {
+            printf("Hardware INT triggered: Checking registers...\r\n");
+            // Faults already read at top of loop
+        }*/
+
+
+        // REGISTER DUMP
+        /*printf("--- Register Dump ---\r\n");
+		for (uint8_t addr = 0x00; addr <= 0x46; addr++)
+		{
+			uint8_t reg = 0;
+			if (BQ_ReadReg(addr, &reg) == HAL_OK)
+				printf("REG[0x%02X] = 0x%02X\r\n", addr, reg);
+			else
+				printf("REG[0x%02X] = FAIL\r\n", addr);
+		}
+		HAL_Delay(5000);*/
+
+
+
+
+    	// BATTERY VOLTAGE READER
+    	/*uint16_t v_mv = BQ_GetBatteryVoltage_mV();
+
+		// Print as Volts and Millivolts without using float
+		// Example: 12600mV becomes "12.600 V"
+		printf("Battery Voltage: %u.%03u V\r\n", v_mv / 1000, v_mv % 1000);
+
+		HAL_Delay(2000);*/
+
+
+
+
+
+    }
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
@@ -219,6 +271,54 @@ static void MX_CAN1_Init(void)
 }
 
 /**
+  * @brief I2C2 Initialization Function
+  * @param None
+  * @retval None
+  */
+static void MX_I2C2_Init(void)
+{
+
+  /* USER CODE BEGIN I2C2_Init 0 */
+
+  /* USER CODE END I2C2_Init 0 */
+
+  /* USER CODE BEGIN I2C2_Init 1 */
+
+  /* USER CODE END I2C2_Init 1 */
+  hi2c2.Instance = I2C2;
+  hi2c2.Init.Timing = 0x00201D2B;
+  hi2c2.Init.OwnAddress1 = 0;
+  hi2c2.Init.AddressingMode = I2C_ADDRESSINGMODE_7BIT;
+  hi2c2.Init.DualAddressMode = I2C_DUALADDRESS_DISABLE;
+  hi2c2.Init.OwnAddress2 = 0;
+  hi2c2.Init.OwnAddress2Masks = I2C_OA2_NOMASK;
+  hi2c2.Init.GeneralCallMode = I2C_GENERALCALL_DISABLE;
+  hi2c2.Init.NoStretchMode = I2C_NOSTRETCH_DISABLE;
+  if (HAL_I2C_Init(&hi2c2) != HAL_OK)
+  {
+    Error_Handler();
+  }
+
+  /** Configure Analogue filter
+  */
+  if (HAL_I2CEx_ConfigAnalogFilter(&hi2c2, I2C_ANALOGFILTER_ENABLE) != HAL_OK)
+  {
+    Error_Handler();
+  }
+
+  /** Configure Digital filter
+  */
+  if (HAL_I2CEx_ConfigDigitalFilter(&hi2c2, 0) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  /* USER CODE BEGIN I2C2_Init 2 */
+
+  /* USER CODE END I2C2_Init 2 */
+
+}
+
+/**
   * @brief GPIO Initialization Function
   * @param None
   * @retval None
@@ -262,7 +362,7 @@ static void MX_GPIO_Init(void)
   /*Configure GPIO pin : PC13 */
   GPIO_InitStruct.Pin = GPIO_PIN_13;
   GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
-  GPIO_InitStruct.Pull = GPIO_NOPULL;
+  GPIO_InitStruct.Pull = GPIO_PULLUP;
   HAL_GPIO_Init(GPIOC, &GPIO_InitStruct);
 
   /*Configure GPIO pin : PA9 */
@@ -296,10 +396,10 @@ static void MX_GPIO_Init(void)
   GPIO_InitStruct.Alternate = GPIO_AF4_I2C3;
   HAL_GPIO_Init(GPIOC, &GPIO_InitStruct);
 
-  /*Configure GPIO pins : PE14 PE11 PE8 */
-  GPIO_InitStruct.Pin = GPIO_PIN_14|GPIO_PIN_11|GPIO_PIN_8;
+  /*Configure GPIO pin : PE14 */
+  GPIO_InitStruct.Pin = GPIO_PIN_14;
   GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
-  GPIO_InitStruct.Pull = GPIO_NOPULL;
+  GPIO_InitStruct.Pull = GPIO_PULLUP;
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
   HAL_GPIO_Init(GPIOE, &GPIO_InitStruct);
 
@@ -316,14 +416,6 @@ static void MX_GPIO_Init(void)
   GPIO_InitStruct.Mode = GPIO_MODE_ANALOG;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
-
-  /*Configure GPIO pins : PB14 PB13 */
-  GPIO_InitStruct.Pin = GPIO_PIN_14|GPIO_PIN_13;
-  GPIO_InitStruct.Mode = GPIO_MODE_AF_OD;
-  GPIO_InitStruct.Pull = GPIO_NOPULL;
-  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_VERY_HIGH;
-  GPIO_InitStruct.Alternate = GPIO_AF4_I2C2;
-  HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
 
   /*Configure GPIO pin : PB12 */
   GPIO_InitStruct.Pin = GPIO_PIN_12;
@@ -344,7 +436,14 @@ static void MX_GPIO_Init(void)
   /*Configure GPIO pin : PE9 */
   GPIO_InitStruct.Pin = GPIO_PIN_9;
   GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
-  GPIO_InitStruct.Pull = GPIO_PULLUP;
+  GPIO_InitStruct.Pull = GPIO_PULLDOWN;
+  HAL_GPIO_Init(GPIOE, &GPIO_InitStruct);
+
+  /*Configure GPIO pins : PE11 PE8 */
+  GPIO_InitStruct.Pin = GPIO_PIN_11|GPIO_PIN_8;
+  GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
+  GPIO_InitStruct.Pull = GPIO_NOPULL;
+  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
   HAL_GPIO_Init(GPIOE, &GPIO_InitStruct);
 
   /*Configure GPIO pin : PE7 */
@@ -359,22 +458,6 @@ static void MX_GPIO_Init(void)
 }
 
 /* USER CODE BEGIN 4 */
-static void MX_I2C2_Init(void)
-{
-  hi2c2.Instance = I2C2;
-  hi2c2.Init.Timing = 0x00201D2B; // Standard 400kHz timing for 16MHz clock
-  hi2c2.Init.OwnAddress1 = 0;
-  hi2c2.Init.AddressingMode = I2C_ADDRESSINGMODE_7BIT;
-  hi2c2.Init.DualAddressMode = I2C_DUALADDRESS_DISABLE;
-  hi2c2.Init.OwnAddress2 = 0;
-  hi2c2.Init.GeneralCallMode = I2C_GENERALCALL_DISABLE;
-  hi2c2.Init.NoStretchMode = I2C_NOSTRETCH_DISABLE;
-  if (HAL_I2C_Init(&hi2c2) != HAL_OK)
-  {
-    Error_Handler();
-  }
-}
-
 /* USER CODE END 4 */
 
 /**
