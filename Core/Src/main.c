@@ -15,6 +15,7 @@
   *
   ******************************************************************************
   */
+#include "../../Drivers/my_drivers/inc/BNO086.h"
 /* USER CODE END Header */
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
@@ -43,6 +44,8 @@
 CAN_HandleTypeDef hcan1;
 
 /* USER CODE BEGIN PV */
+static bno086_dev_t imu;
+static bno086_hal_t hal;
 
 /* USER CODE END PV */
 
@@ -56,6 +59,15 @@ static void MX_CAN1_Init(void);
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
+static int my_spi_transfer(uint8_t *tx_buf, uint8_t *rx_buf, uint16_t len)
+{
+    return 0;
+}
+
+static void my_cs_set(uint8_t state)
+{
+    (void)state;
+}
 
 /* USER CODE END 0 */
 
@@ -90,7 +102,10 @@ int main(void)
   MX_GPIO_Init();
   MX_CAN1_Init();
   /* USER CODE BEGIN 2 */
+  hal.spi_transfer = my_spi_transfer;
+  hal.cs_set = my_cs_set;
 
+  bno086_init(&imu, &hal);
   /* USER CODE END 2 */
 
   /* Infinite loop */
@@ -99,6 +114,24 @@ int main(void)
   {
 	  HAL_Delay(500);
 	  printf("Hello world\n");
+
+	  uint8_t rx[8];
+	  int ret = bno086_spi_read(&imu, rx, 8);
+	  printf("return code: %d\n", ret);
+	  printf("spi_transfer ptr = %p\r\n", imu.hal.spi_transfer);
+	  printf("cs_set ptr = %p\r\n", imu.hal.cs_set);
+
+	  uint8_t rx[8] = {0};
+	  int ret = bno086_spi_read(&imu, rx, sizeof(rx));
+
+	  printf("return code: %d\r\n", ret);
+
+	  if (ret == BNO086_OK) {
+	      printf("RX: %02X %02X %02X %02X %02X %02X %02X %02X\r\n",
+	             rx[0], rx[1], rx[2], rx[3],
+	             rx[4], rx[5], rx[6], rx[7]);
+	  }
+
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
@@ -348,6 +381,7 @@ void Error_Handler(void)
   __disable_irq();
   while (1)
   {
+
   }
   /* USER CODE END Error_Handler_Debug */
 }
