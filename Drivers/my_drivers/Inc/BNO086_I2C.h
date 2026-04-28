@@ -3,7 +3,7 @@
 #ifdef __cplusplus
 extern "C" {
 #endif
-#include "i2c.h"
+// #include "i2c.h"
 // Used to eneble or disable functions needed for rough telescope position
 // Uncomment lne below for fully featured driver
 #define USE_FOR_TELESCOPE
